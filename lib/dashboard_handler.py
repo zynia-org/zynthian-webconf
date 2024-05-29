@@ -328,6 +328,10 @@ class DashboardHandler(ZynthianBasicHandler):
 	@staticmethod
 	def get_i2c_chips():
 		res = []
+		# zynia 2024-05-21
+		# zynia has no i2c, so for now just return
+		return res
+		#
 		out = check_output("i2cdetect -y 1", shell=True).decode().split("\n")
 		if len(out) > 3:
 			for i in range(1, 8):
