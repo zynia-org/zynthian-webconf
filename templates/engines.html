@@ -74,9 +74,10 @@ div.engine_edit select {
     <ul class="nav nav-tabs" role="tablist">
     {% for eng_type in config['ZYNTHIAN_ENGINES'] %}
         {% set _eng_type = eng_type.replace(' ','_') %}
+        {% set eng_type_title = config['ZYNTHIAN_ENGINES_TYPE_TITLE'][eng_type] %}
         <li class="{% if config['ZYNTHIAN_ACTIVE_TAB'] == _eng_type %}active{% end %}">
-            <a id="#{{ _eng_type }}" href="#{{ _eng_type }}" class="tab_anchor" onclick="$('#ZYNTHIAN_ACTIVE_TAB').val('{{ eng_type }}')" role="tab" data-toggle="tab">{{ eng_type }}
-               <span id="plugin_type_count_{{ eng_type }}">({{ len(config['ZYNTHIAN_ENGINES'][eng_type])  }})</span>
+            <a id="#{{ _eng_type }}" href="#{{ _eng_type }}" class="tab_anchor" onclick="$('#ZYNTHIAN_ACTIVE_TAB').val('{{ eng_type }}')" role="tab" data-toggle="tab">{{ eng_type_title }}
+               <span id="plugin_type_count_{{ eng_type }}">({{ len(config['ZYNTHIAN_ENGINES'][eng_type]) }})</span>
             </a>
         </li>
     {% end %}
@@ -91,28 +92,33 @@ div.engine_edit select {
                     <div class="row">
                         <div class="col-xs-1 header">Enabled</div>
                         <div class="col-xs-4 header">Title</div>
-                        <div class="col-xs-3 header">Category</div>
+                        <div class="col-xs-2 header">Category</div>
                         <div class="col-xs-2 header">Quality</div>
                         <div class="col-xs-2 header">Complexity</div>
+                        <div class="col-xs-1 header">Edit</div>
                     </div>
                     {% for eng_code in config['ZYNTHIAN_ENGINES'][eng_type] %}
                     {% set eng_info = config['ZYNTHIAN_ENGINES'][eng_type][eng_code] %}
+                    {% set eng_code_esc = eng_code.replace("'","\\'") %}
                     <div id="engine_row_{{eng_info['ID']}}">
                     <div class="row plugin engine_row"  title="{{ eng_info['DESCR'] }}">
                         <div class="col-xs-1 engine-enabled">
                             <input type="checkbox" id="ENABLE_ENGINE_{{eng_code}}" {% if eng_info['ENABLED'] %} checked="checked" {% end %} onchange="enable_engine('{{ eng_code }}')">
                         </div>
-                        <div class="col-xs-4 one-line-truncated engine-name" onclick="edit_engine('{{ eng_code }}')">
+                        <div class="col-xs-4 one-line-truncated engine-title" onclick="edit_engine('{{ eng_code_esc }}')">
                             {{ eng_info['TITLE'] }}
                         </div>
-                        <div class="col-xs-3 engine-cat" onclick="edit_engine('{{ eng_code }}')">
-                            {{ escape(eng_info['CAT']) }}
+                        <div class="col-xs-2 engine-cat" onclick="edit_engine('{{ eng_code_esc }}')">
+                            {{ eng_info['CAT'] }}
                         </div>
-                        <div class="col-xs-2 engine-quality" onclick="edit_engine('{{ eng_code }}')">
+                        <div class="col-xs-2 engine-quality" onclick="edit_engine('{{ eng_code_esc }}')">
                             <span class="ranking_star_on">{{ eng_info['QUALITY'] * "★" }}</span><span class="ranking_star_off">{{ (5 - eng_info['QUALITY']) * "★" }}</span>
                         </div>
-                        <div class="col-xs-2 engine-complexity" onclick="edit_engine('{{ eng_code }}')">
+                        <div class="col-xs-2 engine-complexity" onclick="edit_engine('{{ eng_code_esc }}')">
                             <span class="ranking_star_on">{{ eng_info['COMPLEX'] * "⚈" }}</span><span class="ranking_star_off">{{ (5 - eng_info['COMPLEX']) * "⚈" }}</span>
+                        </div>
+                        <div class="col-xs-1 engine-edit" onclick="edit_engine('{{ eng_code_esc }}')">
+                            {% if eng_info['EDIT'] == 2 %}edited{% elif eng_info['EDIT'] == 1 %}toggled{% end %}
                         </div>
                     </div>
                     </div>
@@ -123,23 +129,23 @@ div.engine_edit select {
                     <div class="row plugin">
                         <input type="hidden" id="EDIT_CODE" value="">
                         <div class="col-xs-1 engine-enabled">
-                            <input type="checkbox" id="EDIT_ENABLED" value="" onchange="edit_engine_save()">
+                            <input type="checkbox" id="EDIT_ENABLED" value="">
                         </div>
-                        <div class="col-xs-4 engine_name">
-                            <input type="text" id="EDIT_TITLE" value="" oninput="edit_engine_save()">
+                        <div class="col-xs-4 engine-title">
+                            <input type="text" id="EDIT_TITLE" value="">
                         </div>
-                        <div class="col-xs-3 engine-type">
-                            <select id="EDIT_CAT" value="" change="edit_engine_save()"></select>
+                        <div class="col-xs-2 engine-cat">
+                            <select id="EDIT_CAT" value=""></select>
                         </div>
                         <div class="col-xs-2 engine-quality">
-                            <select id="EDIT_QUALITY" onchange="edit_engine_save()">
+                            <select id="EDIT_QUALITY">
                                 {% for r in range(6) %}
                                 <option value="{{ r }}">{{ r * "★" }} ({{ r }})</option>
                                 {% end %}
                             </select>
                         </div>
                         <div class="col-xs-2 engine-complexity">
-                            <select id="EDIT_COMPLEX" onchange="edit_engine_save()">
+                            <select id="EDIT_COMPLEX">
                                 {% for r in range(6) %}
                                 <option value="{{ r }}">{{ r * "⚈" }} ({{ r }})</option>
                                 {% end %}
@@ -151,7 +157,7 @@ div.engine_edit select {
                             &nbsp;
                         </div>
                         <div class="col-xs-10 engine-description">
-                            <textarea id="EDIT_DESCR" oninput="edit_engine_save()"></textarea>
+                            <textarea id="EDIT_DESCR"></textarea>
                         </div>
                         <div class="col-xs-1">
                             <button name="ZYNTHIAN_ENGINE_EDIT_SAVE" class="btn btn-theme btn-block" onclick="edit_engine_save_close(); event.preventDefault();">OK</button>
@@ -200,20 +206,20 @@ function filter_engines() {
     });
 
     //recalc plugin count
-   $(".engines_panel").each(function(index, panel_div) {
-       var panel_divs = panel_div.getElementsByClassName('engine-name');
-       var panel_count = 0;
-       Array.from(panel_divs).forEach((plugin_type_div) => {
-          if (!plugin_type_div.parentElement.classList.contains("hide")){
-	     panel_count += 1;
-          }
-       });
-       $(".tab_anchor").each(function(idx,tab_anchor){
-          if(tab_anchor.id.indexOf(panel_div.parentElement.id)>=0){
-             tab_anchor.innerText = panel_div.parentElement.id.replace("_", " ") + " (" + panel_count + ")";
-          }
-       });
-   });
+    $(".engines_panel").each(function(index, panel_div) {
+        var panel_divs = panel_div.getElementsByClassName('engine_row');
+        var panel_count = 0;
+        Array.from(panel_divs).forEach((plugin_div) => {
+            if (!plugin_div.classList.contains("hide")) {
+                panel_count += 1;
+            }
+        });
+        $(".tab_anchor").each(function(idx,tab_anchor){
+            if (tab_anchor.id.indexOf(panel_div.parentElement.id)>=0){
+                tab_anchor.innerText = tab_anchor.innerText.split("(")[0] + "(" + panel_count + ")";
+            }
+        });
+    });
 }
 
 function confirm_long_time_proc(ev) {
@@ -265,36 +271,75 @@ function edit_engine(ecode) {
 function edit_engine_save(close=false) {
     var scode = document.getElementById("EDIT_CODE").value
     if (scode) {
+        var eng_enabled = Boolean(document.getElementById("EDIT_ENABLED").checked)
+        var eng_title = document.getElementById("EDIT_TITLE").value
+        var eng_cat = document.getElementById("EDIT_CAT").value
+        var eng_quality = Number(document.getElementById("EDIT_QUALITY").value)
+        var eng_complex = Number(document.getElementById("EDIT_COMPLEX").value)
+        var eng_descr = document.getElementById("EDIT_DESCR").value
         // Save values in engine info array
-        eng_info[scode]["ENABLED"] = document.getElementById("EDIT_ENABLED").checked
-        eng_info[scode]["TITLE"] = document.getElementById("EDIT_TITLE").value
-        eng_info[scode]["CAT"] = document.getElementById("EDIT_CAT").value
-        eng_info[scode]["QUALITY"] = document.getElementById("EDIT_QUALITY").value
-        eng_info[scode]["COMPLEX"] = document.getElementById("EDIT_COMPLEX").value
-        eng_info[scode]["DESCR"] = document.getElementById("EDIT_DESCR").value
-        // Refresh engine's row content
-        var eng_div = "div#engine_row_" + eng_info[scode]['ID']
-        document.querySelector(eng_div + " div.engine-enabled input").checked = eng_info[scode]["ENABLED"];
-        document.querySelector(eng_div + " div.engine-name").textContent = eng_info[scode]["TITLE"];
-        document.querySelector(eng_div + " div.engine-cat").textContent = eng_info[scode]["CAT"];
-        document.querySelector(eng_div + " div.engine-quality span.ranking_star_on").textContent = '★'.repeat(eng_info[scode]["QUALITY"]);
-        document.querySelector(eng_div + " div.engine-quality span.ranking_star_off").textContent = '★'.repeat(5 - eng_info[scode]["QUALITY"]);
-        document.querySelector(eng_div + " div.engine-complexity span.ranking_star_on").textContent = '⚈'.repeat(eng_info[scode]["COMPLEX"]);
-        document.querySelector(eng_div + " div.engine-complexity span.ranking_star_off").textContent = '⚈'.repeat(5 - eng_info[scode]["COMPLEX"]);
-        document.querySelector(eng_div + " div.engine_row").title = eng_info[scode]["DESCR"];
-        // Send PUT request
-        if (close) {
+        var edit = 0
+        if (eng_info[scode]["ENABLED"] != eng_enabled) {
+            eng_info[scode]["ENABLED"] = eng_enabled
+            edit = 1
+        }
+        if (eng_info[scode]["TITLE"] != eng_title) {
+            eng_info[scode]["TITLE"] = eng_title
+            edit = 2
+        }
+        if (eng_info[scode]["CAT"] != eng_cat) {
+            eng_info[scode]["CAT"] = eng_cat
+            edit = 2
+        }
+        if (eng_info[scode]["QUALITY"] != eng_quality) {
+            eng_info[scode]["QUALITY"] = eng_quality
+            edit = 2
+        }
+        if (eng_info[scode]["COMPLEX"] != eng_complex) {
+            eng_info[scode]["COMPLEX"] = eng_complex
+            edit = 2
+        }
+        if (eng_info[scode]["DESCR"] != eng_descr) {
+            eng_info[scode]["DESCR"] = eng_descr
+            edit = 2
+        }
+        if (edit == 1) {
+            // Refresh engine's row content
+            var eng_div = "div#engine_row_" + eng_info[scode]['ID']
+            document.querySelector(eng_div + " div.engine-edit").textContent = "toggled";
+            // Send PUT request
             var xhttp = new XMLHttpRequest()
             var request_data = "ENGINE_CODE=" + encodeURIComponent(scode)
-            request_data += "&ENGINE_ENABLED=" + Number(eng_info[scode]["ENABLED"])
-            request_data += "&ENGINE_NAME=" + encodeURIComponent(eng_info[scode]["NAME"])
-            request_data += "&ENGINE_CAT=" + eng_info[scode]["CAT"]
-            request_data += "&ENGINE_QUALITY=" + eng_info[scode]["QUALITY"]
-            request_data += "&ENGINE_COMPLEX=" + eng_info[scode]["COMPLEX"]
-            request_data += "&ENGINE_DESCR=" + eng_info[scode]["DESCR"]
+            request_data += "&ENGINE_ENABLED=" + Number(eng_enabled)
+            xhttp.open("PATCH", "/sw-engines");
+            xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+            xhttp.send(request_data);
+            //console.log("SEND JSON PATCH: " + request_data)
+        } else if (edit > 1) {
+            // Refresh engine's row content
+            var eng_div = "div#engine_row_" + eng_info[scode]['ID']
+            document.querySelector(eng_div + " div.engine-enabled input").checked = eng_enabled;
+            document.querySelector(eng_div + " div.engine-title").textContent = eng_title;
+            document.querySelector(eng_div + " div.engine-cat").textContent = eng_cat;
+            document.querySelector(eng_div + " div.engine-quality span.ranking_star_on").textContent = '★'.repeat(eng_quality);
+            document.querySelector(eng_div + " div.engine-quality span.ranking_star_off").textContent = '★'.repeat(5 - eng_quality);
+            document.querySelector(eng_div + " div.engine-complexity span.ranking_star_on").textContent = '⚈'.repeat(eng_complex);
+            document.querySelector(eng_div + " div.engine-complexity span.ranking_star_off").textContent = '⚈'.repeat(5 - eng_complex);
+            document.querySelector(eng_div + " div.engine-edit").textContent = "edited";
+            document.querySelector(eng_div + " div.engine_row").title = eng_descr;
+            // Send PUT request
+            var xhttp = new XMLHttpRequest()
+            var request_data = "ENGINE_CODE=" + encodeURIComponent(scode)
+            request_data += "&ENGINE_ENABLED=" + Number(eng_enabled)
+            request_data += "&ENGINE_TITLE=" + encodeURIComponent(eng_title)
+            request_data += "&ENGINE_CAT=" + eng_cat
+            request_data += "&ENGINE_QUALITY=" + eng_quality
+            request_data += "&ENGINE_COMPLEX=" + eng_complex
+            request_data += "&ENGINE_DESCR=" + eng_descr
             xhttp.open("PUT", "/sw-engines");
             xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
             xhttp.send(request_data);
+            //console.log("SEND JSON PUT: " + request_data)
         }
     }
     if (close) {
@@ -311,13 +356,17 @@ function enable_engine(ecode) {
     var engine_enabled = document.getElementById("ENABLE_ENGINE_" + ecode).checked
     // Save value in engine info array
     eng_info[ecode]["ENABLED"] = engine_enabled
-    // Send PUT request
+    // Flag EDIT field in table
+    var eng_div = "div#engine_row_" + eng_info[ecode]['ID']
+    document.querySelector(eng_div + " div.engine-edit").textContent = "toggled";
+    // Send PATCH request
     var xhttp = new XMLHttpRequest()
     var request_data = "ENGINE_CODE=" + encodeURIComponent(ecode)
     request_data += "&ENGINE_ENABLED=" + Number(engine_enabled)
     xhttp.open("PATCH", "/sw-engines");
     xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
     xhttp.send(request_data);
+    //console.log("SEND JSON PATCH: " + request_data)
 }
 
 </script>
