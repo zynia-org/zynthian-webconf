@@ -354,9 +354,9 @@ class WiringConfigHandler(ZynthianConfigHandler):
 			'ZYNTHIAN_WIRING_ZYNTOF_CONFIG': ""
 		},
 		"DUMMIES": {
-			'ZYNTHIAN_WIRING_ENCODER_A': "0,0,0,0",
-			'ZYNTHIAN_WIRING_ENCODER_B': "0,0,0,0",
-			'ZYNTHIAN_WIRING_SWITCHES': "0,0,0,0",
+			'ZYNTHIAN_WIRING_ENCODER_A': "-1,-1,-1,-1",
+			'ZYNTHIAN_WIRING_ENCODER_B': "-1,-1,-1,-1",
+			'ZYNTHIAN_WIRING_SWITCHES': "-1,-1,-1,-1",
 			'ZYNTHIAN_WIRING_MCP23017_INTA_PIN': "",
 			'ZYNTHIAN_WIRING_MCP23017_INTB_PIN': "",
 			'ZYNTHIAN_WIRING_ZYNAPTIK_CONFIG': "",
@@ -452,7 +452,7 @@ class WiringConfigHandler(ZynthianConfigHandler):
 				zyntof_config_flag = False
 			try:
 				# Calculate Num of Custom Switches
-				n_extra_switches = min(12, max(0, len(wiring_switches.split(",")) - 4))
+				n_extra_switches = max(0, len(wiring_switches.split(",")) - 4)
 			except:
 				n_extra_switches = 0
 
