@@ -42,7 +42,7 @@ from lib.wiring_config_handler import WiringConfigHandler
 class RepositoryHandler(ZynthianConfigHandler):
     zynthian_base_dir = os.environ.get('ZYNTHIAN_DIR', "/zynthian")
     stable_branch = os.environ.get('ZYNTHIAN_STABLE_BRANCH', "oram")
-    stable_tag = os.environ.get('ZYNTHIAN_STABLE_TAG', "2409")
+    stable_tag = os.environ.get('ZYNTHIAN_STABLE_TAG', "2410")
     testing_branch = os.environ.get('ZYNTHIAN_TESTING_BRANCH', "oram")
 
     repository_list = [
@@ -77,8 +77,13 @@ class RepositoryHandler(ZynthianConfigHandler):
             else:
                 branch = version
             try:
-                if branch and self.set_repo_branch(repitem[0], branch):
-                    changed_repos += 1
+                if branch:
+                    if branch.startswith(self.stable_branch + "-"):
+                        if self.set_repo_tag(repitem[0], branch):
+                            changed_repos += 1
+                    else:
+                        if self.set_repo_branch(repitem[0], branch):
+                            changed_repos += 1
             except Exception as err:
                 logging.error(err)
                 errors[posted_key] = err
@@ -94,36 +99,38 @@ class RepositoryHandler(ZynthianConfigHandler):
         super().get("Repositories", config, errors)
 
     def get_config_info(self, version=None):
-        stable_overall = True
-        testing_overall = True
         repo_branches = []
         for repitem in self.repository_list:
             branch = self.get_repo_current_branch(repitem[0])
-            stable_overall &= (branch == self.stable_branch)
-            testing_overall &= (branch == self.testing_branch)
             repo_branches.append(branch)
-        if version is None:
-            if stable_overall:
-                version = self.stable_branch
-            elif testing_overall:
-                version = self.testing_branch
-            else:
+            if version is None and branch != repo_branches[0]:
                 version = "custom"
+        if version is None and repo_branches:
+            version = repo_branches[0]
+
+        version_options = {}
+        # Get stable tag list => WARNING! first repo (zynthian-ui) rules!
+        for stag in self.get_repo_tag_list(self.repository_list[0][0], filter=self.stable_branch + "-"):
+            version_options[stag] = f"stable ({stag})"
+        version_options[self.stable_branch] = f"staging ({self.stable_branch})"
+        version_options[self.testing_branch] = f"testing ({self.testing_branch})"
+        version_options["custom"] = "custom"
 
         config = {
             "ZYNTHIAN_VERSION": {
                 'type': 'select',
                 'title': 'Version',
                         'value': version,
-                        'options': [self.stable_branch, self.testing_branch, "custom"],
-                        'option_labels': {self.stable_branch: f"stable ({self.stable_branch})", self.testing_branch: f"testing ({self.testing_branch})", "custom": "custom"},
+                        'options': list(version_options.keys()),
+                        'option_labels': version_options,
                         'refresh_on_change': True,
                         'advanced': False
             }
         }
         if version == "custom":
             for i, repitem in enumerate(self.repository_list):
-                options = self.get_repo_branch_list(repitem[0])
+                options = self.get_repo_tag_list(repitem[0])
+                options += self.get_repo_branch_list(repitem[0])
                 config[f"ZYNTHIAN_REPO_{repitem[0]}"] = {
                     'type': 'select',
                     'title': repitem[0],
@@ -138,23 +145,18 @@ class RepositoryHandler(ZynthianConfigHandler):
         }
         return config
 
-    def get_repo_tag_list(self, repo_name):
-        result = ["master"]
+    def get_repo_tag_list(self, repo_name, filter=None):
+        result = []
         repo_dir = self.zynthian_base_dir + "/" + repo_name
-
-        check_output(
-            "cd {}; git remote update origin --prune".format(repo_dir), shell=True)
-        for byteLine in check_output("cd {}; git tag".format(repo_dir), shell=True).splitlines():
+        check_output(f"cd {repo_dir}; git remote update origin --prune", shell=True)
+        for byteLine in check_output(f"cd {repo_dir}; git tag -l {filter}*", shell=True).splitlines():
             result.append(byteLine.decode("utf-8").strip())
-
         return result
 
     def get_repo_branch_list(self, repo_name):
-        result = ["master"]
+        result = []
         repo_dir = self.zynthian_base_dir + "/" + repo_name
-
-        check_output(
-            "cd {}; git remote update origin --prune".format(repo_dir), shell=True)
+        check_output(f"cd {repo_dir}; git remote update origin --prune", shell=True)
         for byteLine in check_output("cd {}; git branch -a".format(repo_dir), shell=True).splitlines():
             bname = byteLine.decode("utf-8").strip()
             if bname.startswith("*"):
@@ -165,46 +167,37 @@ class RepositoryHandler(ZynthianConfigHandler):
                 continue
             if bname not in result:
                 result.append(bname)
-
         return result
 
     def get_repo_current_branch(self, repo_name):
         repo_dir = self.zynthian_base_dir + "/" + repo_name
-
-        for byteLine in check_output("cd {}; git branch | grep \* | cut -d ' ' -f2".format(repo_dir),
-                                     shell=True).splitlines():
+        for byteLine in check_output(f"cd {repo_dir}; git branch | grep \* | cut -d ' ' -f2",
+                                    shell=True).splitlines():
             return byteLine.decode("utf-8")
 
     def set_repo_tag(self, repo_name, tag_name):
-        logging.info("Changing repository '{}' to tag '{}'".format(
-            repo_name, tag_name))
-
+        logging.info(f"Changing repository '{repo_name}' to tag '{tag_name}'")
         repo_dir = self.zynthian_base_dir + "/" + repo_name
         current_branch = self.get_repo_current_branch(repo_name)
-
         if tag_name != current_branch:
             logging.info("... needs change: '{}' != '{}'".format(
                 current_branch, tag_name))
             if tag_name == 'master':
-                check_output("cd {}; git checkout .; git checkout {}".format(
-                    repo_dir, tag_name), shell=True)
+                check_output(
+                    f"cd {repo_dir}; git checkout .; git checkout {tag_name}", shell=True)
             else:
                 check_output(
-                    "cd {}; git checkout .; git branch -d {}; git checkout tags/{} -b {}".format(repo_dir, tag_name,
-                                                                                                 tag_name, tag_name),
-                    shell=True)
+                    f"cd {repo_dir}; git checkout .; git branch -d {tag_name}; git checkout tags/{tag_name} -b {tag_name}",
+                   shell=True)
             return True
 
     def set_repo_branch(self, repo_name, branch_name):
-        logging.info("Changing repository '{}' to branch '{}'".format(
-            repo_name, branch_name))
-
+        logging.info(f"Changing repository '{repo_name}' to branch '{branch_name}'")
         repo_dir = self.zynthian_base_dir + "/" + repo_name
         current_branch = self.get_repo_current_branch(repo_name)
-
         if branch_name != current_branch:
-            logging.info("... needs change: '{}' != '{}'".format(
-                current_branch, branch_name))
-            check_output("cd {}; git checkout .; git checkout {}".format(
-                repo_dir, branch_name), shell=True)
+            logging.info(f"... needs change: '{current_branch}' != '{branch_name}'")
+            check_output(f"cd {repo_dir}; git checkout .; git checkout {branch_name}", shell=True)
             return True
+
+# -----------------------------------------------------------------------------
