@@ -180,15 +180,10 @@ class RepositoryHandler(ZynthianConfigHandler):
         repo_dir = self.zynthian_base_dir + "/" + repo_name
         current_branch = self.get_repo_current_branch(repo_name)
         if tag_name != current_branch:
-            logging.info("... needs change: '{}' != '{}'".format(
-                current_branch, tag_name))
-            if tag_name == 'master':
-                check_output(
-                    f"cd {repo_dir}; git checkout .; git checkout {tag_name}", shell=True)
-            else:
-                check_output(
-                    f"cd {repo_dir}; git checkout .; git branch -d {tag_name}; git checkout tags/{tag_name} -b {tag_name}",
-                   shell=True)
+            logging.info(f"... needs change: '{current_branch}' != '{tag_name}'")
+            check_output(
+                f"cd {repo_dir}; git checkout .; git branch -D {tag_name}; git checkout tags/{tag_name} -b {tag_name}",
+               shell=True)
             return True
 
     def set_repo_branch(self, repo_name, branch_name):
