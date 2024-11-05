@@ -93,11 +93,9 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
 
         # If VNC Server is enabled, add access URI to info
         if self.is_service_active("novnc0"):
-            info['novnc0_uri'] = "http://{}:6080/vnc.html".format(
-                self.request.host)
+            info['novnc0_uri'] = "http://{}:6080/vnc.html".format(self.request.host)
         if self.is_service_active("novnc1"):
-            info['novnc1_uri'] = "http://{}:6081/vnc.html".format(
-                self.request.host)
+            info['novnc1_uri'] = "http://{}:6081/vnc.html".format(self.request.host)
 
         # Restore scroll position
         info['scrollTop'] = int(float(self.get_argument('_scrollTop', '0')))
@@ -106,7 +104,7 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
 
     @tornado.web.authenticated
     def get(self, body, title, config, errors=None):
-        # logging.debug(config)
+        #logging.debug(config)
 
         if self.reboot_flag:
             self.persist_reboot_flag()
@@ -126,8 +124,7 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
         if self.genjson:
             self.write(config)
         else:
-            self.render("config.html", body=body, config=config,
-                        title=title, errors=errors)
+            self.render("config.html", body=body, config=config, title=title, errors=errors)
 
     def is_service_active(self, service):
         return zynconf.is_service_active(service)
@@ -135,11 +132,9 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
     def power_off(self):
         try:
             if self.is_service_active("zynthian"):
-                liblo.send(zynthian_ui_osc_addr,
-                           "/CUIA/POWER_OFF", ("s", "CONFIRM"))
+                liblo.send(zynthian_ui_osc_addr, "/CUIA/POWER_OFF", ("s", "CONFIRM"))
                 sleep(5)
-            check_output(
-                "killall -SIGQUIT zynthian_gui.py; sleep 5; poweroff", shell=True)
+            check_output("killall -SIGQUIT zynthian_gui.py; sleep 5; poweroff", shell=True)
         except Exception as e:
             logging.error("Power Off: {}".format(e))
 
@@ -149,11 +144,9 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
             if os.path.isfile(self.reboot_flag_fpath):
                 os.remove(self.reboot_flag_fpath)
             if self.is_service_active("zynthian"):
-                liblo.send(zynthian_ui_osc_addr,
-                           "/CUIA/REBOOT", ("s", "CONFIRM"))
+                liblo.send(zynthian_ui_osc_addr,"/CUIA/REBOOT", ("s", "CONFIRM"))
                 sleep(5)
-            check_output(
-                "killall -SIGINT zynthian_gui.py; sleep 5; reboot", shell=True)
+            check_output("killall -SIGINT zynthian_gui.py; sleep 5; reboot", shell=True)
         except Exception as e:
             logging.error("Reboot: {}".format(e))
 
