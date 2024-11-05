@@ -170,8 +170,8 @@ class RepositoryHandler(ZynthianConfigHandler):
     def get_repo_tag_list(self, repo_name, filter=None):
         result = []
         repo_dir = self.zynthian_base_dir + "/" + repo_name
-        check_output(f"cd {repo_dir}; git remote update origin --prune", shell=True)
-        for byteLine in check_output(f"cd {repo_dir}; git tag -l {filter}*", shell=True).splitlines():
+        check_output(f"git -C '{repo_dir}' remote update origin --prune", shell=True)
+        for byteLine in check_output(f"git -C '{repo_dir}' tag -l {filter}*", shell=True).splitlines():
             result.append(byteLine.decode("utf-8").strip())
         result.sort()
         return result
@@ -179,8 +179,8 @@ class RepositoryHandler(ZynthianConfigHandler):
     def get_repo_branch_list(self, repo_name):
         result = []
         repo_dir = self.zynthian_base_dir + "/" + repo_name
-        check_output(f"cd {repo_dir}; git remote update origin --prune", shell=True)
-        for byteLine in check_output("cd {}; git branch -a".format(repo_dir), shell=True).splitlines():
+        check_output(f"git -C '{repo_dir}' remote update origin --prune", shell=True)
+        for byteLine in check_output(f"git -C '{repo_dir}' branch -a", shell=True).splitlines():
             bname = byteLine.decode("utf-8").strip()
             if bname.startswith("*"):
                 bname = bname[2:]
@@ -195,7 +195,7 @@ class RepositoryHandler(ZynthianConfigHandler):
 
     def get_repo_current_branch(self, repo_name):
         repo_dir = self.zynthian_base_dir + "/" + repo_name
-        for byteLine in check_output(f"cd {repo_dir}; git branch | grep \* | cut -d ' ' -f2",
+        for byteLine in check_output(f"git -C '{repo_dir}' branch | grep \* | cut -d ' ' -f2",
                                     shell=True).splitlines():
             return byteLine.decode("utf-8")
 
