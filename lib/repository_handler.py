@@ -130,9 +130,10 @@ class RepositoryHandler(ZynthianConfigHandler):
 
         version_options = {}
         # Get stable tag list => WARNING! zynthian-sys rules!
-        for stag in self.get_repo_tag_list("zynthian-sys", filter=self.stable_branch + "-"):
-            version_options[stag] = f"stable ({stag})"
-        version_options[self.stable_branch + "-last"] = f"stable (last)"
+        stags = self.get_repo_tag_list("zynthian-sys", filter=self.stable_branch + "-")
+        #for stag in stags:
+        #    version_options[stag] = f"stable (FROZEN {stag} => no updates!)"
+        version_options[self.stable_branch + "-last"] = f"stable ({stags[-1]})"
         version_options[self.stable_branch] = f"staging ({self.stable_branch})"
         version_options[self.testing_branch] = f"testing ({self.testing_branch})"
         version_options["custom"] = "custom"
