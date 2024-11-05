@@ -121,7 +121,7 @@ class RepositoryHandler(ZynthianConfigHandler):
         for repitem in self.repository_list:
             branch = self.get_repo_current_branch(repitem[0])
             repo_branches.append(branch)
-            if version is None and branch != repo_branches[0]:
+            if version is None and branch.split('.')[0] != repo_branches[0].split('.')[0]:
                 version = "custom"
         if version is None and os.environ.get('ZYNTHIAN_STABLE_TAG', "") == "last":
             version = self.stable_branch + "-last"
