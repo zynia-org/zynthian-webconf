@@ -29,20 +29,21 @@ import tornado.web
 from collections import OrderedDict
 from subprocess import check_output, call
 
+import zynconf
+
 from lib.zynthian_config_handler import ZynthianConfigHandler
 from lib.audio_config_handler import AudioConfigHandler
 from lib.display_config_handler import DisplayConfigHandler
 from lib.wiring_config_handler import WiringConfigHandler
 
-
 # ------------------------------------------------------------------------------
 # GIT Repository Configuration
 # ------------------------------------------------------------------------------
 
+
 class RepositoryHandler(ZynthianConfigHandler):
     zynthian_base_dir = os.environ.get('ZYNTHIAN_DIR', "/zynthian")
     stable_branch = os.environ.get('ZYNTHIAN_STABLE_BRANCH', "oram")
-    stable_tag = os.environ.get('ZYNTHIAN_STABLE_TAG', "2410")
     testing_branch = os.environ.get('ZYNTHIAN_TESTING_BRANCH', "oram")
 
     repository_list = [
@@ -79,7 +80,12 @@ class RepositoryHandler(ZynthianConfigHandler):
             try:
                 if branch:
                     if branch.startswith(self.stable_branch + "-"):
-                        if self.set_repo_tag(repitem[0], branch):
+                        if branch == self.stable_branch + "-last":
+                            stags = self.get_repo_tag_list(repitem[0], filter=self.stable_branch + "-")
+                            stag = stags[-1]
+                        else:
+                            stag = branch
+                        if self.set_repo_tag(repitem[0], stag):
                             changed_repos += 1
                     else:
                         if self.set_repo_branch(repitem[0], branch):
@@ -87,6 +93,18 @@ class RepositoryHandler(ZynthianConfigHandler):
             except Exception as err:
                 logging.error(err)
                 errors[posted_key] = err
+
+        # Save stable tag configuration in config
+        if version.startswith(self.stable_branch + "-"):
+            if version == self.stable_branch + "-last":
+                stable_tag = "last"
+            else:
+                stable_tag = version
+        else:
+            stable_tag = ""
+        zynconf.save_config({
+            "ZYNTHIAN_STABLE_TAG": stable_tag
+        })
 
         config = self.get_config_info(version)
         if changed_repos > 0:
@@ -105,13 +123,16 @@ class RepositoryHandler(ZynthianConfigHandler):
             repo_branches.append(branch)
             if version is None and branch != repo_branches[0]:
                 version = "custom"
+        if version is None and os.environ.get('ZYNTHIAN_STABLE_TAG', "") == "last":
+            version = self.stable_branch + "-last"
         if version is None and repo_branches:
             version = repo_branches[0]
 
         version_options = {}
-        # Get stable tag list => WARNING! first repo (zynthian-ui) rules!
-        for stag in self.get_repo_tag_list(self.repository_list[0][0], filter=self.stable_branch + "-"):
+        # Get stable tag list => WARNING! zynthian-sys rules!
+        for stag in self.get_repo_tag_list("zynthian-sys", filter=self.stable_branch + "-"):
             version_options[stag] = f"stable ({stag})"
+        version_options[self.stable_branch + "-last"] = f"stable (last)"
         version_options[self.stable_branch] = f"staging ({self.stable_branch})"
         version_options[self.testing_branch] = f"testing ({self.testing_branch})"
         version_options["custom"] = "custom"
@@ -151,6 +172,7 @@ class RepositoryHandler(ZynthianConfigHandler):
         check_output(f"cd {repo_dir}; git remote update origin --prune", shell=True)
         for byteLine in check_output(f"cd {repo_dir}; git tag -l {filter}*", shell=True).splitlines():
             result.append(byteLine.decode("utf-8").strip())
+        result.sort()
         return result
 
     def get_repo_branch_list(self, repo_name):
@@ -167,6 +189,7 @@ class RepositoryHandler(ZynthianConfigHandler):
                 continue
             if bname not in result:
                 result.append(bname)
+        result.sort()
         return result
 
     def get_repo_current_branch(self, repo_name):
