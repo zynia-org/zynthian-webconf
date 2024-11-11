@@ -2,9 +2,9 @@
 # ********************************************************************
 # ZYNTHIAN PROJECT: Zynthian Web Configurator
 #
-# Presets Manager Handler
+# Pianoteq Config Handler
 #
-# Copyright (C) 2017 Markus Heidt <markus@heidt-tech.com>
+# Copyright (C) 2017-2024 Fernando Moyano <fernando@zynthian.org>
 #
 # ********************************************************************
 #
@@ -38,17 +38,12 @@ from lib.zynthian_config_handler import ZynthianBasicHandler
 # sys.path.append(os.environ.get('ZYNTHIAN_UI_DIR'))
 
 # ------------------------------------------------------------------------------
-# Soundfont Configuration
+# Pianoteq Configuration
 # ------------------------------------------------------------------------------
 
 
 class PianoteqHandler(ZynthianBasicHandler):
-
-    data_dir = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data")
-    plugins_dir = os.environ.get(
-        'ZYNTHIAN_PLUGINS_DIR', "/zynthian/zynthian-plugins")
-    recipes_dir = os.environ.get(
-        'ZYNTHIAN_RECIPE_DIR', "/zynthian/zynthian-sys/scripts/recipes")
+    recipes_dir = os.environ.get('ZYNTHIAN_RECIPE_DIR', "/zynthian/zynthian-sys/scripts/recipes")
 
     @tornado.web.authenticated
     def get(self, errors=None):
@@ -114,10 +109,8 @@ class PianoteqHandler(ZynthianBasicHandler):
 
     def do_install_pianoteq_binary(self, filename):
         # Install new binary package
-        command = self.recipes_dir + \
-            "/install_pianoteq_binary.sh {}; exit 0".format(filename)
-        result = check_output(command, shell=True,
-                              stderr=STDOUT).decode("utf-8")
+        command = self.recipes_dir + "/install_pianoteq_binary.sh {}; exit 0".format(filename)
+        result = check_output(command, shell=True, stderr=STDOUT).decode("utf-8")
         # TODO! if result is OK, return None!
         return result
 
@@ -128,23 +121,19 @@ class PianoteqHandler(ZynthianBasicHandler):
                 os.makedirs(PIANOTEQ_ADDON_DIR)
             # Copy uploaded file
             logging.info("Moving %s to %s" % (filename, PIANOTEQ_ADDON_DIR))
-            shutil.move(filename, PIANOTEQ_ADDON_DIR +
-                        "/" + os.path.basename(filename))
+            shutil.move(filename, PIANOTEQ_ADDON_DIR + "/" + os.path.basename(filename))
         except Exception as e:
             logging.error("PTQ install failed: {}".format(e))
             return "PTQ install failed: {}".format(e)
 
     def do_activate_license(self):
         license_serial = self.get_argument('ZYNTHIAN_PIANOTEQ_LICENSE')
-        logging.info(
-            "Configuring Pianoteq License Key: {}".format(license_serial))
+        logging.info("Configuring Pianoteq License Key: {}".format(license_serial))
 
         # Activate the License Key by calling Pianoteq binary
-        command = "{} --prefs {} --activate {}; exit 0".format(
-            PIANOTEQ_BINARY, PIANOTEQ_CONFIG_FILE, license_serial)
+        command = "{} --prefs {} --activate {}; exit 0".format(PIANOTEQ_BINARY, PIANOTEQ_CONFIG_FILE, license_serial)
         try:
-            result = check_output(command, shell=True,
-                                  stderr=STDOUT).decode("utf-8")
+            result = check_output(command, shell=True, stderr=STDOUT).decode("utf-8")
         except Exception as e:
             logging.error(format(e))
             result = format(e)

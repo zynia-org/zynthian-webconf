@@ -28,7 +28,6 @@ import logging
 import tornado.web
 
 from lib.zynthian_config_handler import ZynthianBasicHandler
-
 import zyngine.zynthian_lv2 as zynthian_lv2
 
 # ------------------------------------------------------------------------------
@@ -41,9 +40,6 @@ class EnginesHandler(ZynthianBasicHandler):
     @tornado.web.authenticated
     def get(self, errors=None):
         config = {}
-
-        zynthian_lv2.load_engines()
-        # zynthian_lv2.sanitize_engines()
 
         config['ZYNTHIAN_ENGINES'] = zynthian_lv2.engines_by_type
         config['ZYNTHIAN_ENGINES_TYPE_TITLE'] = zynthian_lv2.engine_type_title

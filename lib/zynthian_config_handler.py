@@ -30,6 +30,7 @@ from time import sleep
 from subprocess import check_output
 
 import zynconf
+import zyngine.zynthian_lv2 as zynthian_lv2
 
 # Avoid unwanted debug messages from zynconf module
 zynconf_logger = logging.getLogger('zynconf')
@@ -66,6 +67,9 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
         zynconf.load_config()
         zynconf.load_midi_config()
 
+        zynthian_lv2.load_engines()
+        # zynthian_lv2.sanitize_engines()
+
         self.read_reboot_flag()
         self.genjson = False
         try:
@@ -86,6 +90,23 @@ class ZynthianBasicHandler(tornado.web.RequestHandler):
             'host_name': self.request.host,
             'reboot_flag': self.reboot_flag
         }
+
+        # Check enabled engines
+        try:
+            if zynthian_lv2.engines["JV/Osirus"]["ENABLED"] or zynthian_lv2.engines["JV/OsTIrus"]["ENABLED"]:
+                info["sw-dsp56300"] = True
+            else:
+                info["sw-dsp56300"] = False
+        except:
+            info["sw-dsp56300"] = False
+
+        try:
+            if zynthian_lv2.engines["PT"]["ENABLED"]:
+                info["sw-pianoteq"] = True
+            else:
+                info["sw-pianoteq"] = False
+        except:
+            info["sw-pianoteq"] = False
 
         # If MOD-UI is enabled, add access URI to info
         if self.is_service_active("mod-ui"):
