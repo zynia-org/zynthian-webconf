@@ -83,7 +83,12 @@
 								<a href="#menu-hw" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Software <span class="caret"></span></a>
 								<ul class="dropdown-menu">
 									<li {% if request.uri=='/sw-engines' %}class="active"{% end %}><a href="/sw-engines">Engines</a></li>
+									{% try %}{% if info['sw-pianoteq'] %}
 									<li {% if request.uri=='/sw-pìanoteq' %}class="active"{% end %}><a href="/sw-pianoteq">Pianoteq</a></li>
+									{% end %}{% except %}{% end %}
+									{% try %}{% if info['sw-dsp56300'] %}
+									<li {% if request.uri=='/sw-dsp56300' %}class="active"{% end %}><a href="/sw-dsp56300">DSP56300</a></li>
+									{% end %}{% except %}{% end %}
 									<li {% if request.uri=='/sw-update' %}class="active"{% end %}><a href="/sw-update">Update</a></li>
 									<li {% if request.uri=='/sw-repos' %}class="active"{% end %}><a href="/sw-repos">Repositories</a></li>
 								</ul>

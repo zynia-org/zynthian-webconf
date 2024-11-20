@@ -1,0 +1,135 @@
+
+<h2>{{ title }}</h2>
+
+<form id="dsp56300-upload-form" action="/upload" enctype="multipart/form-data" method="post">
+	{% module Template('upload.html', config=config) %}
+</form>
+
+<form id="dsp56300-form" action="/sw-dsp56300" enctype="multipart/form-data" method="post">
+
+	<p>The <a href="https://dsp56300.wordpress.com/"><b>DSP56300 emulator by The Usual Suspects</b></a>, is a software
+	emulation of the popular <a href="https://www.nxp.com/docs/en/reference-manual/DSP56300FM.pdf"> DSP563XX family of
+	DSP chips developed originally by Motorola</a>. They were used in a number of hardware synthesizers and other musical
+	gear from the mid 90s, such as Access Virus A, B, C, TI / Clavia Nord Lead 2X, 3, Modular / Waldorf Q, Microwave II /
+	Novation Supernova, Nova and many others.</p>
+
+	<p>For using the emulator you must have legal access to a ROM file containing the firmware for the device you want
+	to emulate. If you are the lucky owner of one of this wonderful pieces of gear, you may have legal access to the
+	firmware ROM file and you could use it with this emulator.  Please, be aware that most (if not all!) firmware ROM
+	files are not free software and you are not allowed to share them with anyone without permission from the copyright
+	owners (aka, the device manufacturer).</p>
+
+	<p>From this page you can upload the firmware ROM files for the supported devices:</p>
+
+	<div id='upload-button'>
+		<br/>
+		<b>Osirus ROM file:</b>
+		<input id="rom_fapth_osirus" readonly="readonly" value="{{ config['ZYNTHIAN_DSP56300_ROM_FILE_OSIRUS'] }}">
+		<input id="upload_show_osirus" class="btn btn-lg btn-theme" type="button" value="Upload Osirus ROM file" onclick="uploadShowButton('Osirus')">
+		<br/>
+		<br/>
+		<b>OsTIrus ROM file:</b>
+		<input id="rom_fapth_ostirus" readonly="readonly" value="{{ config['ZYNTHIAN_DSP56300_ROM_FILE_OSTIRUS'] }}">
+		<input id="upload_show_ostirus" class="btn btn-lg btn-theme" type="button" value="Upload OsTIrus ROM file" onclick="uploadShowButton('OsTIrus')">
+		<br/>
+	</div>
+
+	<div id='upload-finished'>
+		<p>
+			<b>The new file is being installed. Please wait...</b>
+		</p>
+	</div>
+
+	<div id='installation-success'>
+		<p>
+			<b>The new ROM file was installed successfully.</b><br>
+			You should reload all chains using DSP56300 emulator or simply <a href="/sys-reboot">reboot your zynthian</a>.
+		</p>
+	</div>
+
+	<div>
+		{% if errors %}<div class="alert alert-danger">{% raw str(errors).replace("\n", "<br>") %}</div>{% end %}
+	</div>
+
+</form>
+
+<div id="loading-div-background">
+	<div id="loading-div" class="ui-corner-all">
+		PROCESSING. PLEASE WAIT...
+	</div>
+</div>
+
+<script type="text/javascript">
+var dsp56300Form = $('#dsp56300-form')[0];
+var dsp56300_gear_name = "";
+
+$(document).ready(function (){
+	$("#loading-div-background").hide();
+	if (window.location.href.endsWith("?install_success")) $("#installation-success").show();
+	else $("#installation-success").hide();
+	$("#upload-finished").hide();
+	$('#input-uploadfile-type')[0].value = 'bin,BIN';
+
+	var deferred = $.Deferred();
+	deferred.done(function(value) {
+		$("#upload_progress_panel").addClass("active");
+		var socketMessage = {
+			"handler_name": "UploadProgressHandler",
+			"data": $('#input-uploadfile-session')[0].value
+		};
+		window.zynthianSocket.send(JSON.stringify(socketMessage));
+	});
+	connectZynthianWebSocket(deferred);
+
+	$('#upload_panel')[0].onuploadend = function(response){
+		console.log("upload succeeded: " + response);
+		$("#upload-finished").show();
+		$("#installation-success").hide();
+
+		var ajaxData = new FormData(dsp56300Form);
+		ajaxData.append('ZYNTHIAN_DSP56300_ACTION','INSTALL_' +	dsp56300_gear_name.toUpperCase() + '_ROMFILE')
+		ajaxData.append("ZYNTHIAN_DSP56300_FILENAME", response);
+
+		var ajax = new XMLHttpRequest();
+		ajax.open( dsp56300Form.getAttribute( 'method' ), dsp56300Form.getAttribute( 'action' ), true );
+
+		ajax.onload = function() 	{
+			if( ajax.status >= 200 && ajax.status < 400 )	{
+				if( ajax.status != 200) {
+					console.log("upload error: " + ajax.response);
+				}
+			}
+			else {
+				alert( ajax.response );
+			}
+		};
+
+		ajax.onloadend = function() {
+			$("#upload-finished").hide();
+			if (this.status == 200){
+				$("#installation-success").show();
+			} 
+			window.location.href = window.location.href + "?install_success";
+		};
+
+		ajax.onerror = function() {
+			console.log("revise uploads failed");
+		};
+
+		ajax.send(ajaxData);
+	}
+});
+
+function uploadShowButton(gear_name) {
+	dsp56300_gear_name = gear_name;
+	var client_id = $('#input-uploadfile-session')[0].value
+	$('#dsp56300-upload-form').attr('action', '/upload?redirectUrl=/sw-dsp56300&clientId=' + client_id);
+	$('#upload_panel').show(500)
+	$('#upload_progress_panel').hide(500);
+}
+
+function showProgressAnimation(){
+	$("#loading-div-background").show();
+}
+
+</script>
